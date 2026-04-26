@@ -56,6 +56,15 @@ public class FileSender {
 
     /** Return response code */
     public int send(String method) {
+        return send(method, true);
+    }
+
+    /** Return response code, including error responses. */
+    public int sendAnyStatus(String method) {
+        return send(method, false);
+    }
+
+    private int send(String method, boolean checkStatus) {
         String WNL = "\r\n";   // Web newline
         String boundary = UUID.randomUUID().toString();
 
@@ -81,7 +90,10 @@ public class FileSender {
                 .method(method, BodyPublishers.ofString(body))
                 .build();
         HttpResponse<InputStream> response = HttpLib.executeJDK(HttpClient.newHttpClient(), request, BodyHandlers.ofInputStream());
-        HttpLib.handleResponseNoBody(response);
+        if ( checkStatus )
+            HttpLib.handleResponseNoBody(response);
+        else
+            HttpLib.finishResponse(response);
         return response.statusCode();
     }
 }

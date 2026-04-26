@@ -23,15 +23,27 @@ package org.apache.jena.fuseki.main;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
+import java.io.InputStream;
+import java.net.URI;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpRequest.BodyPublishers;
+import java.net.http.HttpResponse;
+import java.net.http.HttpResponse.BodyHandlers;
+
 import org.apache.jena.atlas.iterator.Iter;
 import org.apache.jena.atlas.web.TypedInputStream;
+import org.apache.jena.fuseki.system.DataUploader;
 import org.apache.jena.graph.Graph;
+import org.apache.jena.http.HttpLib;
 import org.apache.jena.http.HttpOp;
 import org.apache.jena.http.HttpRDF;
 import org.apache.jena.riot.Lang;
 import org.apache.jena.riot.RDFDataMgr;
+import org.apache.jena.riot.WebContent;
 import org.apache.jena.riot.system.StreamRDF;
 import org.apache.jena.riot.system.StreamRDFLib;
+import org.apache.jena.riot.web.HttpNames;
 import org.apache.jena.sparql.core.DatasetGraph;
 import org.apache.jena.sparql.exec.http.DSP;
 import org.apache.jena.sparql.exec.http.GSP;
@@ -108,5 +120,55 @@ public class TestFileUpload  extends AbstractFusekiTest {
         DatasetGraph dsg = DSP.service(databaseURL()).GET();
         assertEquals(1, dsg.getDefaultGraph().size());
         assertEquals(2, dsg.getUnionGraph().size());
+    }
+
+    @Test
+    public void upload_gsp_05_request_size_limit() {
+        withSystemProperty(DataUploader.SYSTEM_PROPERTY_MAX_REQUEST_SIZE, "8", () -> {
+            int sc = postBody(databaseURL() + "?default", "<http://example/s> <http://example/p> <http://example/o> .");
+            assertEquals(HttpSC.PAYLOAD_TOO_LARGE_413, sc);
+        });
+    }
+
+    @Test
+    public void upload_gsp_06_multipart_file_size_limit() {
+        withSystemProperty(DataUploader.SYSTEM_PROPERTY_MAX_FILE_SIZE, "8", () -> {
+            FileSender x = new FileSender(databaseURL() + "?default");
+            x.add("D.ttl", "<http://example/s> <http://example/p> <http://example/o> .", "text/turtle");
+            int sc = x.sendAnyStatus("POST");
+            assertEquals(HttpSC.PAYLOAD_TOO_LARGE_413, sc);
+        });
+    }
+
+    @Test
+    public void upload_gsp_07_expanded_size_limit() {
+        withSystemProperty(DataUploader.SYSTEM_PROPERTY_MAX_EXPANDED_SIZE, "8", () -> {
+            int sc = postBody(databaseURL() + "?default", "<http://example/s> <http://example/p> <http://example/o> .");
+            assertEquals(HttpSC.PAYLOAD_TOO_LARGE_413, sc);
+        });
+    }
+
+    private static void withSystemProperty(String property, String value, Runnable action) {
+        String oldValue = System.getProperty(property);
+        try {
+            System.setProperty(property, value);
+            action.run();
+        } finally {
+            if ( oldValue == null )
+                System.clearProperty(property);
+            else
+                System.setProperty(property, oldValue);
+        }
+    }
+
+    private static int postBody(String url, String body) {
+        HttpRequest request = HttpRequest
+                .newBuilder(URI.create(url))
+                .setHeader(HttpNames.hContentType, WebContent.contentTypeTurtle)
+                .POST(BodyPublishers.ofString(body))
+                .build();
+        HttpResponse<InputStream> response = HttpLib.executeJDK(HttpClient.newHttpClient(), request, BodyHandlers.ofInputStream());
+        HttpLib.finishResponse(response);
+        return response.statusCode();
     }
 }
