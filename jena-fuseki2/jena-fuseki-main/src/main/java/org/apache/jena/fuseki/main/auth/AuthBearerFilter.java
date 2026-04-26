@@ -162,7 +162,7 @@ public class AuthBearerFilter implements Filter {
             // The bearerToken has not been decoded. It is the b64token of RFC 6750.
             if ( bearerToken == null ) {
                 // Consistency check.
-                log.warn("Not a legal bearer token: "+authHeader.getAuthArgs());
+                log.warn("Not a legal bearer token");
                 response.sendError(HttpSC.BAD_REQUEST_400);
                 return;
             }
