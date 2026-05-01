@@ -45,6 +45,7 @@ import org.apache.jena.fuseki.Fuseki;
 import org.apache.jena.fuseki.system.FusekiNetLib;
 import org.apache.jena.graph.Graph;
 import org.apache.jena.query.*;
+import org.apache.jena.riot.SysRIOT;
 import org.apache.jena.riot.web.HttpNames;
 import org.apache.jena.sparql.core.DatasetGraph;
 import org.apache.jena.sparql.core.Prologue;
@@ -349,6 +350,8 @@ public abstract class SPARQLQueryProcessor extends ActionService
         Context context = action.getContext().copy();
         if ( ! context.isDefined(Service.httpServiceAllowed) && ! context.isDefined(Service.oldServiceAllowed) )
             context.set(Service.httpServiceAllowed, false);
+        if ( ! context.isDefined(SysRIOT.sysStreamManager) )
+            context.set(SysRIOT.sysStreamManager, Fuseki.webStreamManager);
         return context;
     }
 

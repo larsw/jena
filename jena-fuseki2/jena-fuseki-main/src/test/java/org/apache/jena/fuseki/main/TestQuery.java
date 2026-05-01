@@ -32,6 +32,7 @@ import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
+import java.nio.charset.StandardCharsets;
 import java.util.Iterator;
 
 import org.junit.jupiter.api.BeforeEach;
@@ -178,6 +179,19 @@ public class TestQuery extends AbstractFusekiTest {
             int n = ResultSetFormatter.consume(rs);
             assertEquals(2, n);
         }
+    }
+
+    @Test
+    public void query_dynamic_dataset_does_not_load_file_uri() throws IOException {
+        File source = File.createTempFile("fuseki-query-from-", ".ttl");
+        source.deleteOnExit();
+        try ( Writer out = new FileWriter(source, StandardCharsets.UTF_8) ) {
+            out.write("<http://example/file-s> <http://example/file-p> 99 .\n");
+        }
+
+        String fileURI = source.toURI().toString();
+        execQuery("SELECT * FROM <" + fileURI + "> { ?s ?p ?o }", 0);
+        execQuery("SELECT * FROM NAMED <" + fileURI + "> { GRAPH <" + fileURI + "> { ?s ?p ?o } }", 0);
     }
 
     @Test
