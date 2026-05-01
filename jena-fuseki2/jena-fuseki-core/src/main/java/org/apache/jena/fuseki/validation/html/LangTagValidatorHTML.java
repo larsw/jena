@@ -27,7 +27,6 @@ import static org.apache.jena.fuseki.validation.html.ValidatorHtmlLib.setHeaders
 import static org.apache.jena.fuseki.validation.html.ValidatorHtmlLib.startFixed;
 
 import java.io.IOException;
-import java.io.PrintStream;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -66,10 +65,6 @@ public class LangTagValidatorHTML
                 httpResponse.sendError(HttpServletResponse.SC_BAD_REQUEST, "No language tags");
 
             ServletOutputStream outStream = httpResponse.getOutputStream();
-            PrintStream stdout = System.out;
-            PrintStream stderr = System.err;
-            System.setOut(new PrintStream(outStream));
-            System.setErr(new PrintStream(outStream));
 
             setHeaders(httpResponse);
 
@@ -85,7 +80,7 @@ public class LangTagValidatorHTML
 
                 for ( String languageTag : args ) {
                     if ( !first )
-                        System.out.println();
+                        outStream.println();
                     first = false;
                     outStream.println(String.format("%-16s %s", "Input:    ", languageTag));
 
@@ -122,10 +117,6 @@ public class LangTagValidatorHTML
                 }
             } finally {
                 finishFixed(outStream);
-                System.out.flush();
-                System.err.flush();
-                System.setOut(stdout);
-                System.setErr(stdout);
             }
 
             outStream.println("</body>");

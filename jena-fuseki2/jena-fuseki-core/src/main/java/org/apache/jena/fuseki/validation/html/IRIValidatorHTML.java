@@ -25,6 +25,7 @@ import static org.apache.jena.fuseki.validation.html.ValidatorHtmlLib.*;
 
 import java.io.IOException;
 import java.io.PrintStream;
+import java.nio.charset.StandardCharsets;
 
 import jakarta.servlet.ServletOutputStream;
 import jakarta.servlet.http.HttpServletRequest;
@@ -49,10 +50,7 @@ public class IRIValidatorHTML
                 httpResponse.sendError(HttpServletResponse.SC_BAD_REQUEST, "No ?iri= parameter");
 
             ServletOutputStream outStream = httpResponse.getOutputStream();
-            PrintStream stdout = System.out;
-            PrintStream stderr = System.err;
-            System.setOut(new PrintStream(outStream));
-            System.setErr(new PrintStream(outStream));
+            PrintStream out = new PrintStream(outStream, false, StandardCharsets.UTF_8);
 
             setHeaders(httpResponse);
 
@@ -74,33 +72,29 @@ public class IRIValidatorHTML
                             iriStr = iriStr.substring(0,iriStr.length()-1);
                     }
                     if ( !first )
-                        System.out.println();
+                        out.println();
                     first = false;
                     try {
                         IRIx iri = provider.create(iriStr);
-                        System.out.println(iriStr + " ==> " + iri);
+                        out.println(iriStr + " ==> " + iri);
                         if ( iri.isRelative() )
-                            System.out.println("Relative IRI: " + iriStr);
+                            out.println("Relative IRI: " + iriStr);
 
                         if ( iri.hasViolations() ) {
-                            System.out.println();
+                            out.println();
                             iri.handleViolations((error,msg)->{
                                 String str = htmlQuote(msg);
                                 String category = (error)?"Error":"Warning";
-                                System.out.printf("  %-7s : %s\n", category, str);
+                                out.printf("  %-7s : %s\n", category, str);
                             });
                         }
                     } catch (IRIException ex) {
-                        System.out.println(iriStr);
-                        System.out.println("Bad IRI: "+ex.getMessage());
+                        out.println(iriStr);
+                        out.println("Bad IRI: "+ex.getMessage());
                     }
                 }
             } finally {
                 finishFixed(outStream);
-                System.out.flush();
-                System.err.flush();
-                System.setOut(stdout);
-                System.setErr(stdout);
             }
 
             outStream.println("</body>");

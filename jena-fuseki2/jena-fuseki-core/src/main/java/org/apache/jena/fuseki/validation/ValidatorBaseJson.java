@@ -83,7 +83,7 @@ public abstract class ValidatorBaseJson extends ServletBase {
             JSON.write(out, obj);
         } catch (ActionErrorException ex) {
             if ( ex.getCause() != null )
-                ex.getCause().printStackTrace(System.err);
+                vLog.warn("ActionErrorException with cause", ex);
             if ( ex.getMessage() != null )
                 ServletOps.responseSendError(response, ex.getRC(), ex.getMessage());
             else

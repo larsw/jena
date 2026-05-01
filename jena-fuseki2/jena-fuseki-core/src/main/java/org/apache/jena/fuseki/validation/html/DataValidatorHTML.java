@@ -70,10 +70,6 @@ public class DataValidatorHTML
             ServletOutputStream outStream = httpResponse.getOutputStream();
             ErrorHandlerMsg errorHandler = new ErrorHandlerMsg(outStream);
 
-            // Capture logging errors.
-            PrintStream stderr = System.err;
-            System.setErr(new PrintStream(outStream));
-
             // Headers
             setHeaders(httpResponse);
 
@@ -105,15 +101,12 @@ public class DataValidatorHTML
                     output.finish();
                     output1.flush();
                     outStream.flush();
-                    System.err.flush();
                 } catch (RiotException ex) {
                     exception = ex;
                 }
             }
             finally {
                 finishFixed(outStream);
-                System.err.flush();
-                System.setErr(stderr);
             }
 
             outStream.println("</body>");
@@ -186,7 +179,6 @@ public class DataValidatorHTML
         Reader reader = null;
         String[] args = httpRequest.getParameterValues(paramData);
         if ( args == null || args.length == 0 ) {
-            System.err.println("Not a form");
             // Not a form?
             reader = httpRequest.getReader();
         } else if ( args.length > 1 ) {

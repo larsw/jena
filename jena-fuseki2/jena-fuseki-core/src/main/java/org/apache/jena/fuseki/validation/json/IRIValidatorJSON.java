@@ -69,10 +69,8 @@ public class IRIValidatorJSON {
             List<String> warnings = new ArrayList<>();
             try {
                 IRIx iri = provider.create(iriStr);
-                System.out.println(iriStr + " ==> " + iri);
                 if ( iri.isRelative() )
-                    if ( iri.isRelative() )
-                        warnings.add("Relative IRI: " + iriStr);
+                    warnings.add("Relative IRI: " + iriStr);
                 iri.handleViolations((error,msg)->{
                     if ( error )
                         errors.add(msg);
