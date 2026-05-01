@@ -39,13 +39,17 @@ import org.apache.jena.rdf.model.Model;
 import org.apache.jena.rdf.model.ModelFactory;
 import org.apache.jena.rdf.model.RDFNode;
 import org.apache.jena.rdf.model.Resource;
+import org.apache.jena.riot.SysRIOT;
+import org.apache.jena.riot.system.streammgr.StreamManager;
 import org.apache.jena.riot.system.ErrorHandler;
 import org.apache.jena.riot.system.ErrorHandlerFactory;
 import org.apache.jena.sparql.core.DatasetGraph;
 import org.apache.jena.sparql.core.DatasetGraphFactory;
 import org.apache.jena.sparql.core.DatasetGraphWrapper;
 import org.apache.jena.sparql.core.Quad;
+import org.apache.jena.sparql.exec.UpdateExec;
 import org.apache.jena.sparql.sse.SSE;
+import org.apache.jena.sparql.util.Context;
 import org.apache.jena.update.UpdateAction;
 import org.apache.jena.update.UpdateException;
 import org.apache.jena.update.UpdateFactory;
@@ -182,6 +186,28 @@ public class TestUpdateOperations
         UpdateRequest req = UpdateFactory.create("LOAD SILENT <"+DIR+"/D-not-found.nt> INTO GRAPH <"+gName.getURI()+">");
         UpdateAction.execute(req, gs);
         assertEquals(0, Iter.count(gs.find()));
+    }
+
+    @Test
+    public void load16_context_stream_manager() {
+        DatasetGraph gs = graphStore();
+        UpdateRequest req = UpdateFactory.create("LOAD <"+DIR+"/D.nt>");
+        assertThrows(UpdateException.class, () -> UpdateExec.dataset(gs).update(req).context(noLocatorsContext()).execute());
+        assertEquals(0, Iter.count(gs.find()));
+    }
+
+    @Test
+    public void load17_context_stream_manager_into_graph() {
+        DatasetGraph gs = graphStore();
+        UpdateRequest req = UpdateFactory.create("LOAD <"+DIR+"/D.nt> INTO GRAPH <"+gName.getURI()+">");
+        assertThrows(UpdateException.class, () -> UpdateExec.dataset(gs).update(req).context(noLocatorsContext()).execute());
+        assertEquals(0, Iter.count(gs.find()));
+    }
+
+    private static Context noLocatorsContext() {
+        Context context = new Context();
+        context.set(SysRIOT.sysStreamManager, new StreamManager());
+        return context;
     }
 
     @Test public void insert_where_01() {

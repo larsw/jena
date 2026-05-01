@@ -55,9 +55,12 @@ import org.apache.jena.query.QueryException;
 import org.apache.jena.query.QueryParseException;
 import org.apache.jena.query.Syntax;
 import org.apache.jena.riot.WebContent;
+import org.apache.jena.riot.SysRIOT;
 import org.apache.jena.riot.web.HttpNames;
 import org.apache.jena.shared.OperationDeniedException;
+import org.apache.jena.sparql.exec.UpdateExec;
 import org.apache.jena.sparql.modify.UsingList;
+import org.apache.jena.sparql.util.Context;
 import org.apache.jena.update.UpdateAction;
 import org.apache.jena.update.UpdateException;
 import org.apache.jena.update.UpdateFactory;
@@ -232,9 +235,9 @@ public class SPARQL_Update extends ActionService
         action.beginWrite();
         try {
             if (req == null )
-                UpdateAction.parseExecute(usingList, action.getActiveDSG(), input, requestBase, Syntax.syntaxARQ);
+                UpdateAction.parseExecute(usingList, action.getActiveDSG(), input, requestBase, Syntax.syntaxARQ, updateContext(action));
             else
-                UpdateAction.execute(req, action.getActiveDSG());
+                UpdateExec.dataset(action.getActiveDSG()).update(req).context(updateContext(action)).execute();
             action.commit();
         } catch (QueryParseException ex) {
             ActionLib.consumeBody(action);
@@ -261,6 +264,12 @@ public class SPARQL_Update extends ActionService
                 ServletOps.errorOccurred(ex.getMessage(), ex);
             }
         } finally { action.endWrite(); }
+    }
+
+    private static Context updateContext(HttpAction action) {
+        Context context = action.getActiveDSG().getContext().copy();
+        context.set(SysRIOT.sysStreamManager, Fuseki.webStreamManager);
+        return context;
     }
 
     /**

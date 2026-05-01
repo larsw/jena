@@ -21,6 +21,10 @@
 
 package org.apache.jena.fuseki.main;
 
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+
 import org.junit.jupiter.api.Test;
 
 import org.apache.jena.rdflink.RDFLink;
@@ -75,5 +79,17 @@ curl -v -XPOST 'http://localhost:3030/'"${DS}"'/?using-named-graph-uri=http%3A%2
         FusekiTestLib.expect400(()->
             UpdateExec.service(URL).update(PREFIXES+" WITH  <http://example/ng2> INSERT { :s :p :o } WHERE {}").execute()
         );
+    }
+
+    @Test public void updateLoadFileRejected() throws IOException {
+        Path data = Files.createTempFile("fuseki-load-", ".nt");
+        Files.writeString(data, "<http://example/s> <http://example/p> <http://example/o> .");
+        FusekiServer server = server();
+        String serviceURL = server.datasetURL(DS);
+        try {
+            FusekiTestLib.expect400(() -> UpdateExec.service(serviceURL).update("LOAD <"+data.toUri()+">").execute());
+        } finally {
+            Files.deleteIfExists(data);
+        }
     }
 }

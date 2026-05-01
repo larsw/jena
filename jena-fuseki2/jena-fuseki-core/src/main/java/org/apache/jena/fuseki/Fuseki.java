@@ -30,7 +30,6 @@ import org.apache.jena.atlas.lib.DateTimeUtils;
 import org.apache.jena.atlas.lib.Version;
 import org.apache.jena.fuseki.system.FusekiCore;
 import org.apache.jena.query.ARQ;
-import org.apache.jena.riot.system.streammgr.LocatorFTP;
 import org.apache.jena.riot.system.streammgr.LocatorHTTP;
 import org.apache.jena.riot.system.streammgr.StreamManager;
 import org.apache.jena.sparql.util.Context;
@@ -208,9 +207,8 @@ public class Fuseki {
     public static final StreamManager webStreamManager;
     static {
         webStreamManager = new StreamManager();
-        // Only know how to handle http URLs
+        // Only know how to handle HTTP(S) URLs.
         webStreamManager.addLocator(new LocatorHTTP());
-        webStreamManager.addLocator(new LocatorFTP());
     }
 
     // HTTP response header inserted to aid tracking.

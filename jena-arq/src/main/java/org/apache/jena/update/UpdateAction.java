@@ -38,6 +38,7 @@ import org.apache.jena.sparql.modify.UpdateSink;
 import org.apache.jena.sparql.modify.UsingList;
 import org.apache.jena.sparql.modify.UsingUpdateSink;
 import org.apache.jena.sparql.modify.request.UpdateWithUsing;
+import org.apache.jena.sparql.util.Context;
 
 /**
  * A class of forms for executing SPARQL Update operations. parse means the update
@@ -315,7 +316,23 @@ public class UpdateAction {
      * @param syntax The update language syntax
      */
     public static void parseExecute(UsingList usingList, DatasetGraph dataset, InputStream input, String baseURI, Syntax syntax) {
-        UpdateProcessorStreaming uProc = UpdateStreaming.createStreaming(dataset);
+        parseExecute(usingList, dataset, input, baseURI, syntax, null);
+    }
+
+    /**
+     * Parse update operations into a DatasetGraph by parsing from an InputStream.
+     *
+     * @param usingList A list of USING or USING NAMED statements that be added to
+     *     all {@link UpdateWithUsing} queries
+     * @param dataset The dataset to apply the changes to
+     * @param input The source of the update request (must be UTF-8).
+     * @param baseURI The base URI for resolving relative URIs (may be
+     *     <code>null</code>)
+     * @param syntax The update language syntax
+     * @param context The context for update execution.
+     */
+    public static void parseExecute(UsingList usingList, DatasetGraph dataset, InputStream input, String baseURI, Syntax syntax, Context context) {
+        UpdateProcessorStreaming uProc = UpdateStreaming.createStreaming(dataset, context);
         if ( uProc == null )
             throw new ARQException("No suitable update procesors are registered/able to execute your updates");
 

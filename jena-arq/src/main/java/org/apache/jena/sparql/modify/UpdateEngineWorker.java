@@ -43,6 +43,7 @@ import org.apache.jena.graph.GraphUtil;
 import org.apache.jena.graph.Node;
 import org.apache.jena.query.Query;
 import org.apache.jena.riot.*;
+import org.apache.jena.riot.system.streammgr.StreamManager;
 import org.apache.jena.riot.system.PrefixMap;
 import org.apache.jena.sparql.ARQInternalErrorException;
 import org.apache.jena.sparql.core.*;
@@ -202,10 +203,10 @@ public class UpdateEngineWorker implements UpdateVisitor
                     // Quads accepted (extension).
                     if ( loadBuffered ) {
                         DatasetGraph dsg2 = DatasetGraphFactory.create();
-                        RDFDataMgr.read(dsg2, source);
+                        RDFParser.source(source).streamManager(streamManager()).parse(dsg2);
                         dsg2.find().forEachRemaining(datasetGraph::add);
                     } else {
-                        RDFDataMgr.read(datasetGraph, source);
+                        RDFParser.source(source).streamManager(streamManager()).parse(datasetGraph);
                     }
                     return;
                 }
@@ -214,7 +215,7 @@ public class UpdateEngineWorker implements UpdateVisitor
                 // parser behaviour of just selecting default graph triples when the
                 // destination is a graph, we need to do the same steps as RDFParser.parseURI,
                 // with different checking.
-                TypedInputStream input = RDFDataMgr.open(source);
+                TypedInputStream input = RDFDataMgr.open(source, streamManager());
                 String contentType = input.getContentType();
                 Lang lang = RDFDataMgr.determineLang(source, contentType, Lang.TTL);
                 if ( lang == null )
@@ -238,6 +239,10 @@ public class UpdateEngineWorker implements UpdateVisitor
                 }
             }
         });
+    }
+
+    private StreamManager streamManager() {
+        return StreamManager.get(context);
     }
 
     @Override
