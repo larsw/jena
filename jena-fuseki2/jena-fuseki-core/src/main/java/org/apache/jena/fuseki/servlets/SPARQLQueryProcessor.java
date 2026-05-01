@@ -226,14 +226,19 @@ public abstract class SPARQLQueryProcessor extends ActionService
 
     protected void executeWithParameter(HttpAction action) {
         String queryString = action.getRequestParameter(paramQuery);
+        SPARQLRequestSize.rejectIfStringExceeds(queryString, "SPARQL query parameter");
         execute(queryString, action);
     }
 
     protected void executeBody(HttpAction action) {
         String queryString = null;
         try {
-            InputStream input = action.getRequestInputStream();
+            SPARQLRequestSize.rejectIfContentLengthExceeds(action);
+            InputStream input = SPARQLRequestSize.limitInputStream(action.getRequestInputStream(), "SPARQL query request body");
             queryString = IO.readWholeFileAsUTF8(input);
+        } catch (SPARQLRequestSize.SizeLimitExceededException ex) {
+            SPARQLRequestSize.tooLarge(ex);
+            return;
         } catch (Throwable ex) {
             ActionLib.consumeBody(action);
             ServletOps.errorOccurred(ex);

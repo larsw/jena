@@ -31,6 +31,7 @@ import org.apache.jena.rdflink.RDFLink;
 import org.apache.jena.sparql.core.DatasetGraph;
 import org.apache.jena.sparql.core.DatasetGraphFactory;
 import org.apache.jena.sparql.exec.UpdateExec;
+import org.apache.jena.web.HttpSC;
 
 public class TestUpdate {
 /*
@@ -90,6 +91,30 @@ curl -v -XPOST 'http://localhost:3030/'"${DS}"'/?using-named-graph-uri=http%3A%2
             FusekiTestLib.expect400(() -> UpdateExec.service(serviceURL).update("LOAD <"+data.toUri()+">").execute());
         } finally {
             Files.deleteIfExists(data);
+        }
+    }
+
+    @Test public void updateBodySizeLimit() {
+        FusekiServer server = server();
+        String serviceURL = server.datasetURL(DS);
+        withSystemProperty("jena.fuseki.sparql.maxRequestSize", "8", () ->
+            FusekiTestLib.expectFail(
+                () -> UpdateExec.service(serviceURL).update(PREFIXES+"INSERT DATA { :s :p :o }").execute(),
+                HttpSC.Code.PAYLOAD_TOO_LARGE
+            )
+        );
+    }
+
+    private static void withSystemProperty(String property, String value, Runnable action) {
+        String oldValue = System.getProperty(property);
+        try {
+            System.setProperty(property, value);
+            action.run();
+        } finally {
+            if ( oldValue == null )
+                System.clearProperty(property);
+            else
+                System.setProperty(property, oldValue);
         }
     }
 }

@@ -28,6 +28,7 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.*;
+import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
@@ -50,6 +51,8 @@ import org.apache.jena.http.HttpEnv;
 import org.apache.jena.http.HttpLib;
 import org.apache.jena.http.HttpOp;
 import org.apache.jena.query.*;
+import org.apache.jena.riot.WebContent;
+import org.apache.jena.riot.web.HttpNames;
 import org.apache.jena.sparql.core.Quad;
 import org.apache.jena.sparql.core.Var;
 import org.apache.jena.sparql.engine.binding.Binding;
@@ -112,6 +115,14 @@ public class TestQuery extends AbstractFusekiTest {
                 qExec.execSelect();
             }
         }, HttpSC.Code.UNPROCESSABLE_ENTITY);
+    }
+
+    @Test
+    public void query_body_size_limit() {
+        withSystemProperty("jena.fuseki.sparql.maxRequestSize", "4", () -> {
+            int sc = postSparqlQuery(serviceQuery(), "ASK { }");
+            assertEquals(HttpSC.PAYLOAD_TOO_LARGE_413, sc);
+        });
     }
 
     @Test
@@ -354,6 +365,30 @@ public class TestQuery extends AbstractFusekiTest {
             boolean b = ResultsCompare.equalsByTerm(rs, expectedResultSet);
             assertTrue(b, "Result sets different");
         }
+    }
+
+    private static void withSystemProperty(String property, String value, Runnable action) {
+        String oldValue = System.getProperty(property);
+        try {
+            System.setProperty(property, value);
+            action.run();
+        } finally {
+            if ( oldValue == null )
+                System.clearProperty(property);
+            else
+                System.setProperty(property, oldValue);
+        }
+    }
+
+    private static int postSparqlQuery(String url, String query) {
+        HttpRequest request = HttpRequest
+                .newBuilder(URI.create(url))
+                .setHeader(HttpNames.hContentType, WebContent.contentTypeSPARQLQuery)
+                .POST(HttpRequest.BodyPublishers.ofString(query))
+                .build();
+        HttpResponse<InputStream> response = HttpLib.executeJDK(HttpClient.newHttpClient(), request, HttpResponse.BodyHandlers.ofInputStream());
+        HttpLib.finishResponse(response);
+        return response.statusCode();
     }
 
 }

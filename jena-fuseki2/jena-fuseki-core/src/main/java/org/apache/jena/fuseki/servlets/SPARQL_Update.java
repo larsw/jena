@@ -172,12 +172,21 @@ public class SPARQL_Update extends ActionService
 
     private void executeBody(HttpAction action) {
         InputStream input = null;
-        try { input = action.getRequestInputStream(); }
+        try {
+            SPARQLRequestSize.rejectIfContentLengthExceeds(action);
+            input = SPARQLRequestSize.limitInputStream(action.getRequestInputStream(), "SPARQL update request body");
+        }
+        catch (SPARQLRequestSize.SizeLimitExceededException ex) { SPARQLRequestSize.tooLarge(ex); }
         catch (IOException ex) { ServletOps.errorOccurred(ex); }
 
         if ( action.verbose ) {
             // Verbose mode only .... capture request for logging (does not scale).
-            byte[] bytes = IO.readWholeFile(input);
+            byte[] bytes = null;
+            try {
+                bytes = IO.readWholeFile(input);
+            } catch (SPARQLRequestSize.SizeLimitExceededException ex) {
+                SPARQLRequestSize.tooLarge(ex);
+            }
             input = new ByteArrayInputStream(bytes);
             try {
                 String requestStr = Bytes.bytes2string(bytes);
@@ -197,6 +206,7 @@ public class SPARQL_Update extends ActionService
         String requestStr = action.getRequestParameter(paramUpdate);
         if ( requestStr == null )
             requestStr = action.getRequestParameter(paramRequest);
+        SPARQLRequestSize.rejectIfStringExceeds(requestStr, "SPARQL update parameter");
 
         if ( action.verbose )
             action.log.info(format("[%d] Form update = \n%s", action.id, requestStr));
@@ -257,6 +267,10 @@ public class SPARQL_Update extends ActionService
             ActionLib.consumeBody(action);
             abortSilent(action);
             throw ex;
+        } catch (SPARQLRequestSize.SizeLimitExceededException ex) {
+            ActionLib.consumeBody(action);
+            abortSilent(action);
+            SPARQLRequestSize.tooLarge(ex);
         } catch (Throwable ex) {
             ActionLib.consumeBody(action);
             if ( ! ( ex instanceof ActionErrorException ) ) {
