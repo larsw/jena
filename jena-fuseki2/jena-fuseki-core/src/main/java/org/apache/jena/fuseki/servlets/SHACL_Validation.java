@@ -24,6 +24,11 @@ package org.apache.jena.fuseki.servlets;
 import static java.lang.String.format;
 import static org.apache.jena.fuseki.servlets.GraphTarget.determineTarget;
 
+import java.io.IOException;
+import java.io.InputStream;
+
+import org.apache.jena.atlas.io.IO;
+import org.apache.jena.atlas.web.ContentType;
 import org.apache.jena.atlas.web.MediaType;
 import org.apache.jena.fuseki.DEF;
 import org.apache.jena.graph.Graph;
@@ -31,10 +36,15 @@ import org.apache.jena.graph.Node;
 import org.apache.jena.graph.NodeFactory;
 import org.apache.jena.riot.Lang;
 import org.apache.jena.riot.RDFLanguages;
+import org.apache.jena.riot.RiotParseException;
+import org.apache.jena.riot.WebContent;
+import org.apache.jena.riot.system.StreamRDF;
+import org.apache.jena.riot.system.StreamRDFLib;
 import org.apache.jena.riot.web.HttpNames;
 import org.apache.jena.shacl.ShaclValidator;
 import org.apache.jena.shacl.Shapes;
 import org.apache.jena.shacl.ValidationReport;
+import org.apache.jena.sparql.graph.GraphFactory;
 import org.apache.jena.web.HttpSC;
 
 /**
@@ -66,7 +76,7 @@ public class SHACL_Validation extends BaseActionREST { //ActionREST {
             if ( ! graphTarget.exists() )
                 ServletOps.errorNotFound("No data graph: "+graphTarget.label());
             Graph data = graphTarget.graph();
-            Graph shapesGraph = ActionLib.readFromRequest(action, Lang.TTL);
+            Graph shapesGraph = readShapesGraph(action, Lang.TTL);
 
             Node targetNode = null;
             if ( targetNodeStr != null ) {
@@ -88,6 +98,44 @@ public class SHACL_Validation extends BaseActionREST { //ActionREST {
             ActionLib.graphResponse(action, report.getGraph(), lang);
         } finally {
             action.endRead();
+        }
+    }
+
+    private static Graph readShapesGraph(HttpAction action, Lang defaultLang) {
+        ContentType ct = ActionLib.getContentType(action);
+        Lang lang;
+
+        if ( ct == null || ct.getContentTypeStr().isEmpty() ) {
+            lang = defaultLang;
+        } else if ( ct.equals(WebContent.ctHTMLForm)) {
+            ServletOps.errorBadRequest("HTML Form data sent to SHACL validation server");
+            return null;
+        } else {
+            lang = RDFLanguages.contentTypeToLang(ct.getContentTypeStr());
+            if ( lang == null )
+                lang = defaultLang;
+        }
+
+        SHACLRequestSize.rejectIfContentLengthExceeds(action);
+
+        Graph graph = GraphFactory.createDefaultGraph();
+        StreamRDF dest = StreamRDFLib.graph(graph);
+        try {
+            InputStream input = SHACLRequestSize.limitInputStream(action.getRequestInputStream(),
+                                                                  "SHACL shapes request body");
+            ActionLib.parse(action, dest, input, lang, null);
+            return graph;
+        } catch (SHACLRequestSize.SizeLimitExceededException ex) {
+            ActionLib.consumeBody(action);
+            SHACLRequestSize.tooLarge(ex);
+            return null;
+        } catch (RiotParseException ex) {
+            ActionLib.consumeBody(action);
+            ServletOps.errorParseError(ex);
+            return null;
+        } catch (IOException ex) {
+            IO.exception(ex);
+            return null;
         }
     }
 }

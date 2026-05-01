@@ -22,18 +22,30 @@
 package org.apache.jena.fuseki.main;
 
 import static org.apache.jena.fuseki.main.ConfigureTests.OneServerPerTestSuite;
+import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 
+import java.io.ByteArrayInputStream;
+import java.io.InputStream;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpRequest.BodyPublishers;
+import java.net.http.HttpResponse;
+
 import org.junit.jupiter.api.*;
 
+import org.apache.jena.fuseki.servlets.SHACLRequestSize;
 import org.apache.jena.graph.Graph;
+import org.apache.jena.http.HttpLib;
 import org.apache.jena.http.HttpRDF;
 import org.apache.jena.rdfconnection.RDFConnection;
 import org.apache.jena.riot.RDFDataMgr;
+import org.apache.jena.riot.WebContent;
 import org.apache.jena.shacl.ValidationReport;
 import org.apache.jena.sparql.core.DatasetGraph;
 import org.apache.jena.sparql.core.DatasetGraphFactory;
+import org.apache.jena.web.HttpSC;
 
 @TestMethodOrder(MethodOrderer.MethodName.class)
 public class TestFusekiShaclValidation {
@@ -239,9 +251,81 @@ public class TestFusekiShaclValidation {
         });
     }
 
+    @Test
+    public void shacl_shapes_content_length_size_limit() {
+        withServer((datasetURL)->{
+            try ( RDFConnection conn = RDFConnection.connect(datasetURL)) {
+                conn.put(DIR+"data1.ttl");
+                try {
+                    withSystemProperty(SHACLRequestSize.SYSTEM_PROPERTY_MAX_REQUEST_SIZE, "4", () -> {
+                        int sc = postShapes(datasetURL+"/shacl?graph=default",
+                                            "PREFIX sh: <http://www.w3.org/ns/shacl#>");
+                        assertEquals(HttpSC.PAYLOAD_TOO_LARGE_413, sc);
+                    });
+                } finally {
+                    clearAll(conn);
+                }
+            }
+        });
+    }
+
+    @Test
+    public void shacl_shapes_chunked_size_limit() {
+        withServer((datasetURL)->{
+            try ( RDFConnection conn = RDFConnection.connect(datasetURL)) {
+                conn.put(DIR+"data1.ttl");
+                try {
+                    withSystemProperty(SHACLRequestSize.SYSTEM_PROPERTY_MAX_REQUEST_SIZE, "4", () -> {
+                        int sc = postShapesChunked(datasetURL+"/shacl?graph=default",
+                                                   "PREFIX sh: <http://www.w3.org/ns/shacl#>");
+                        assertEquals(HttpSC.PAYLOAD_TOO_LARGE_413, sc);
+                    });
+                } finally {
+                    clearAll(conn);
+                }
+            }
+        });
+    }
+
     private static ValidationReport validateReport(String url, String shapesFile) {
         Graph shapesGraph = RDFDataMgr.loadGraph(shapesFile);
         Graph responseGraph = HttpRDF.httpPostGraphRtn(url, shapesGraph);
         return ValidationReport.fromGraph(responseGraph);
+    }
+
+    private static int postShapes(String url, String body) {
+        HttpRequest request = HttpRequest.newBuilder(HttpLib.toRequestURI(url))
+                .header("Content-Type", WebContent.contentTypeTurtle)
+                .POST(BodyPublishers.ofString(body))
+                .build();
+        return execute(request);
+    }
+
+    private static int postShapesChunked(String url, String body) {
+        HttpRequest request = HttpRequest.newBuilder(HttpLib.toRequestURI(url))
+                .header("Content-Type", WebContent.contentTypeTurtle)
+                .POST(BodyPublishers.ofInputStream(() -> new ByteArrayInputStream(body.getBytes(UTF_8))))
+                .build();
+        return execute(request);
+    }
+
+    private static int execute(HttpRequest request) {
+        HttpResponse<InputStream> response = HttpLib.executeJDK(HttpClient.newHttpClient(), request,
+                                                                HttpResponse.BodyHandlers.ofInputStream());
+        HttpLib.finishResponse(response);
+        return response.statusCode();
+    }
+
+    private static void withSystemProperty(String property, String value, Runnable action) {
+        String oldValue = System.getProperty(property);
+        System.setProperty(property, value);
+        try {
+            action.run();
+        } finally {
+            if ( oldValue == null )
+                System.clearProperty(property);
+            else
+                System.setProperty(property, oldValue);
+        }
     }
 }
