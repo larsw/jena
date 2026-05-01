@@ -24,10 +24,12 @@ package org.apache.jena.fuseki.main;
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
+import java.io.ByteArrayInputStream;
 import java.io.InputStream;
 import java.net.URLEncoder;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
+import java.net.http.HttpRequest.BodyPublishers;
 import java.net.http.HttpResponse;
 
 import org.junit.jupiter.api.Test;
@@ -73,6 +75,16 @@ public class TestValidationSizeLimits {
     }
 
     @Test
+    public void dataValidatorBodySizeLimit() {
+        withValidationServer(server -> {
+            withSystemProperty(ValidationRequestSize.SYSTEM_PROPERTY_MAX_REQUEST_SIZE, "4", () -> {
+                int sc = postChunked(server.serverURL()+"$/validate/data", "<s> <p> <o> .");
+                assertEquals(HttpSC.PAYLOAD_TOO_LARGE_413, sc);
+            });
+        });
+    }
+
+    @Test
     public void iriValidatorSizeLimit() {
         withValidationServer(server -> {
             withSystemProperty(ValidationRequestSize.SYSTEM_PROPERTY_MAX_REQUEST_SIZE, "4", () -> {
@@ -111,6 +123,16 @@ public class TestValidationSizeLimits {
 
     private static int get(String url) {
         HttpRequest request = HttpRequest.newBuilder(HttpLib.toRequestURI(url)).GET().build();
+        HttpResponse<InputStream> response = HttpLib.executeJDK(HttpClient.newHttpClient(), request,
+                                                                HttpResponse.BodyHandlers.ofInputStream());
+        HttpLib.finishResponse(response);
+        return response.statusCode();
+    }
+
+    private static int postChunked(String url, String body) {
+        HttpRequest request = HttpRequest.newBuilder(HttpLib.toRequestURI(url))
+                .POST(BodyPublishers.ofInputStream(() -> new ByteArrayInputStream(body.getBytes(UTF_8))))
+                .build();
         HttpResponse<InputStream> response = HttpLib.executeJDK(HttpClient.newHttpClient(), request,
                                                                 HttpResponse.BodyHandlers.ofInputStream());
         HttpLib.finishResponse(response);

@@ -23,6 +23,9 @@ package org.apache.jena.fuseki.validation;
 
 import static java.lang.String.format;
 
+import java.io.IOException;
+import java.io.Reader;
+
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.apache.jena.fuseki.servlets.ServletOps;
@@ -61,6 +64,29 @@ public final class ValidationRequestSize {
             return false;
         ServletOps.responseSendError(response, HttpSC.PAYLOAD_TOO_LARGE_413, message);
         return true;
+    }
+
+    public static String readString(Reader reader, String description,
+                                    HttpServletResponse response) throws IOException {
+        long limit = maxRequestSize();
+        StringBuilder builder = new StringBuilder();
+        char[] chars = new char[8192];
+        long len = 0;
+        for (;;) {
+            int x = reader.read(chars);
+            if ( x == -1 )
+                return builder.toString();
+            String string = new String(chars, 0, x);
+            if ( isEnabled(limit) ) {
+                len = utf8Length(string, limit, len);
+                if ( len > limit ) {
+                    ServletOps.responseSendError(response, HttpSC.PAYLOAD_TOO_LARGE_413,
+                                                 format("%s size exceeds configured limit %d", description, limit));
+                    return null;
+                }
+            }
+            builder.append(chars, 0, x);
+        }
     }
 
     public static void rejectIfStringExceeds(String string, String description) {

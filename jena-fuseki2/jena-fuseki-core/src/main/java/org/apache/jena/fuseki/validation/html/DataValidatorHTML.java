@@ -178,12 +178,16 @@ public class DataValidatorHTML
         }
     }
 
-    private static Reader createInput(HttpServletRequest httpRequest, HttpServletResponse httpResponse) throws Exception {
+    private static Reader createInput(HttpServletRequest httpRequest,
+                                      HttpServletResponse httpResponse) throws Exception {
         Reader reader = null;
         String[] args = httpRequest.getParameterValues(paramData);
         if ( args == null || args.length == 0 ) {
-            // Not a form?
-            reader = httpRequest.getReader();
+            String body = ValidationRequestSize.readString(httpRequest.getReader(),
+                                                           "Validator data request body", httpResponse);
+            if ( body == null )
+                return null;
+            reader = new StringReader(body);
         } else if ( args.length > 1 ) {
             httpResponse.sendError(HttpServletResponse.SC_BAD_REQUEST, "Too many parameters for '" + paramData + "='");
             return null;
