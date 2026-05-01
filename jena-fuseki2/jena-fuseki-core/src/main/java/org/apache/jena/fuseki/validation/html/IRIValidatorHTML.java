@@ -30,6 +30,7 @@ import java.nio.charset.StandardCharsets;
 import jakarta.servlet.ServletOutputStream;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import org.apache.jena.fuseki.validation.ValidationRequestSize;
 import org.apache.jena.iri3986.provider.IRIProvider3986;
 import org.apache.jena.irix.IRIException;
 import org.apache.jena.irix.IRIProvider;
@@ -46,8 +47,12 @@ public class IRIValidatorHTML
         try {
             String[] args = httpRequest.getParameterValues(paramIRI);
 
-            if ( args == null || args.length == 0 )
+            if ( args == null || args.length == 0 ) {
                 httpResponse.sendError(HttpServletResponse.SC_BAD_REQUEST, "No ?iri= parameter");
+                return;
+            }
+            if ( ValidationRequestSize.rejectIfStringsExceed(args, "Validator IRI parameter", httpResponse) )
+                return;
 
             ServletOutputStream outStream = httpResponse.getOutputStream();
             PrintStream out = new PrintStream(outStream, false, StandardCharsets.UTF_8);

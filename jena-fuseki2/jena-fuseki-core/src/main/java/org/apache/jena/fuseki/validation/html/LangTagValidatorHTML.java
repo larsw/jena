@@ -33,6 +33,7 @@ import java.util.List;
 import jakarta.servlet.ServletOutputStream;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import org.apache.jena.fuseki.validation.ValidationRequestSize;
 import org.apache.jena.langtag.LangTag;
 import org.apache.jena.langtag.LangTagException;
 import org.apache.jena.langtag.SysLangTag;
@@ -51,9 +52,10 @@ public class LangTagValidatorHTML
             String[] args1 = httpRequest.getParameterValues(paramLang);
             String[] args2 = httpRequest.getParameterValues(paramLangTag);
 
-            if ( args1 == null && args2 == null )
+            if ( args1 == null && args2 == null ) {
                 httpResponse.sendError(HttpServletResponse.SC_BAD_REQUEST, "No ?lang= parameter");
-
+                return;
+            }
 
             List<String> args = new ArrayList<>();
             if ( args1 != null )
@@ -61,8 +63,13 @@ public class LangTagValidatorHTML
             if ( args2 != null )
                 for ( String a : args2 ) args.add(a);
 
-            if ( args.size() == 0 )
+            if ( args.size() == 0 ) {
                 httpResponse.sendError(HttpServletResponse.SC_BAD_REQUEST, "No language tags");
+                return;
+            }
+            if ( ValidationRequestSize.rejectIfStringsExceed(args.toArray(String[]::new),
+                                                              "Validator language tag parameter", httpResponse) )
+                return;
 
             ServletOutputStream outStream = httpResponse.getOutputStream();
 

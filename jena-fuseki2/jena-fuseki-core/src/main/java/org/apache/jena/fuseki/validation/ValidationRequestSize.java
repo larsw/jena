@@ -55,17 +55,44 @@ public final class ValidationRequestSize {
         return true;
     }
 
+    public static boolean rejectIfStringsExceed(String[] strings, String description, HttpServletResponse response) {
+        String message = messageIfStringsExceed(strings, description);
+        if ( message == null )
+            return false;
+        ServletOps.responseSendError(response, HttpSC.PAYLOAD_TOO_LARGE_413, message);
+        return true;
+    }
+
     public static void rejectIfStringExceeds(String string, String description) {
         String message = messageIfStringExceeds(string, description);
         if ( message != null )
             ServletOps.error(HttpSC.PAYLOAD_TOO_LARGE_413, message);
     }
 
+    public static void rejectIfStringsExceed(String[] strings, String description) {
+        String message = messageIfStringsExceed(strings, description);
+        if ( message != null )
+            ServletOps.error(HttpSC.PAYLOAD_TOO_LARGE_413, message);
+    }
+
     private static String messageIfStringExceeds(String string, String description) {
-        long limit = maxRequestSize();
-        if ( ! isEnabled(limit) || string == null )
+        if ( string == null )
             return null;
-        long len = utf8Length(string, limit);
+        return messageIfStringsExceed(new String[] { string }, description);
+    }
+
+    private static String messageIfStringsExceed(String[] strings, String description) {
+        long limit = maxRequestSize();
+        if ( ! isEnabled(limit) || strings == null )
+            return null;
+        long len = 0;
+        for ( String string : strings ) {
+            if ( string == null )
+                continue;
+            len = utf8Length(string, limit, len);
+            if ( len > limit )
+                break;
+        }
         if ( len > limit )
             return format("%s size exceeds configured limit %d", description, limit);
         return null;
@@ -80,8 +107,8 @@ public final class ValidationRequestSize {
         return limit >= 0;
     }
 
-    private static long utf8Length(String string, long limit) {
-        long len = 0;
+    private static long utf8Length(String string, long limit, long initialLength) {
+        long len = initialLength;
         for ( int i = 0; i < string.length(); i++ ) {
             char ch = string.charAt(i);
             if ( ch <= 0x7F )

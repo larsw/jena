@@ -32,6 +32,9 @@ import java.net.http.HttpResponse;
 
 import org.junit.jupiter.api.Test;
 
+import org.apache.jena.fuseki.validation.DataValidator;
+import org.apache.jena.fuseki.validation.IRIValidator;
+import org.apache.jena.fuseki.validation.LangTagValidator;
 import org.apache.jena.fuseki.validation.QueryValidator;
 import org.apache.jena.fuseki.validation.UpdateValidator;
 import org.apache.jena.fuseki.validation.ValidationRequestSize;
@@ -59,11 +62,44 @@ public class TestValidationSizeLimits {
         });
     }
 
+    @Test
+    public void dataValidatorSizeLimit() {
+        withValidationServer(server -> {
+            withSystemProperty(ValidationRequestSize.SYSTEM_PROPERTY_MAX_REQUEST_SIZE, "4", () -> {
+                int sc = get(server.serverURL()+"$/validate/data?data="+urlEncode("<s> <p> <o> ."));
+                assertEquals(HttpSC.PAYLOAD_TOO_LARGE_413, sc);
+            });
+        });
+    }
+
+    @Test
+    public void iriValidatorSizeLimit() {
+        withValidationServer(server -> {
+            withSystemProperty(ValidationRequestSize.SYSTEM_PROPERTY_MAX_REQUEST_SIZE, "4", () -> {
+                int sc = get(server.serverURL()+"$/validate/iri?iri="+urlEncode("http://example/"));
+                assertEquals(HttpSC.PAYLOAD_TOO_LARGE_413, sc);
+            });
+        });
+    }
+
+    @Test
+    public void langTagValidatorSizeLimit() {
+        withValidationServer(server -> {
+            withSystemProperty(ValidationRequestSize.SYSTEM_PROPERTY_MAX_REQUEST_SIZE, "4", () -> {
+                int sc = get(server.serverURL()+"$/validate/langtag?lang=en-GB");
+                assertEquals(HttpSC.PAYLOAD_TOO_LARGE_413, sc);
+            });
+        });
+    }
+
     private static void withValidationServer(ServerAction action) {
         FusekiServer server = FusekiServer.create()
                 .port(0)
                 .addServlet("/$/validate/query", new QueryValidator())
                 .addServlet("/$/validate/update", new UpdateValidator())
+                .addServlet("/$/validate/data", new DataValidator())
+                .addServlet("/$/validate/iri", new IRIValidator())
+                .addServlet("/$/validate/langtag", new LangTagValidator())
                 .build()
                 .start();
         try {

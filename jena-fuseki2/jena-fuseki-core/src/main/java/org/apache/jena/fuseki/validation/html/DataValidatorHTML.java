@@ -32,6 +32,7 @@ import jakarta.servlet.http.HttpServletResponse;
 
 import org.apache.jena.atlas.io.IO;
 import org.apache.jena.fuseki.system.FusekiNetLib;
+import org.apache.jena.fuseki.validation.ValidationRequestSize;
 import org.apache.jena.riot.*;
 import org.apache.jena.riot.system.ErrorHandler;
 import org.apache.jena.riot.system.StreamRDF;
@@ -66,6 +67,8 @@ public class DataValidatorHTML
             // HTML input maybe have been written in some default.
             // The HTML input and what the user typed should agree.
             Reader input = createInput(httpRequest, httpResponse);
+            if ( input == null )
+                return;
 
             ServletOutputStream outStream = httpResponse.getOutputStream();
             ErrorHandlerMsg errorHandler = new ErrorHandlerMsg(outStream);
@@ -185,6 +188,8 @@ public class DataValidatorHTML
             httpResponse.sendError(HttpServletResponse.SC_BAD_REQUEST, "Too many parameters for '" + paramData + "='");
             return null;
         } else {
+            if ( ValidationRequestSize.rejectIfStringsExceed(args, "Validator data parameter", httpResponse) )
+                return null;
             reader = new StringReader(args[0]);
         }
 

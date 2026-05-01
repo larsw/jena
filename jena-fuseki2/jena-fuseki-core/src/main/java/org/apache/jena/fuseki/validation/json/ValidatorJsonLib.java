@@ -30,6 +30,7 @@ import jakarta.servlet.http.HttpServletResponse;
 
 import org.apache.jena.fuseki.Fuseki;
 import org.apache.jena.fuseki.servlets.ServletOps;
+import org.apache.jena.fuseki.validation.ValidationRequestSize;
 import org.apache.jena.web.HttpSC;
 import org.slf4j.Logger;
 
@@ -81,7 +82,7 @@ public abstract class ValidatorJsonLib
         String[] args = action.request.getParameterValues(paramName);
         if ( args == null || args.length == 0 )
             return null;
+        ValidationRequestSize.rejectIfStringsExceed(args, "Validator parameter '" + paramName + "'");
         return args;
     }
 }
-
