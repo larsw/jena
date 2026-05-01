@@ -112,6 +112,9 @@ public abstract class ValidatorBase extends ServletBase {
     }
 
     protected void execute(HttpServletRequest request, HttpServletResponse response) {
+        if ( ValidationRequestSize.rejectIfContentLengthExceeds(request, response) )
+            return;
+
         MediaType mt = ConNeg.chooseContentType(request, jsonOrTextOffer, null);
         // MediaType mt = ConNeg.chooseContentType(request, jsonOrTextOffer,
         // DEF.acceptJSON);

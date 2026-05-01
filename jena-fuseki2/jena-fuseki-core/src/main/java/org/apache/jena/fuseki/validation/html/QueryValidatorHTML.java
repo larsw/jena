@@ -34,6 +34,7 @@ import jakarta.servlet.ServletOutputStream;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 
+import org.apache.jena.fuseki.validation.ValidationRequestSize;
 import org.apache.jena.query.Query;
 import org.apache.jena.query.QueryFactory;
 import org.apache.jena.query.Syntax;
@@ -65,6 +66,8 @@ public class QueryValidatorHTML {
             }
 
             final String queryString = httpRequest.getParameter(paramQuery).replaceAll("(\r|\n| )*$", "");
+            if ( ValidationRequestSize.rejectIfStringExceeds(queryString, "Validator query parameter", httpResponse) )
+                return;
 
             String querySyntax = httpRequest.getParameter(paramSyntax);
             if ( querySyntax == null || querySyntax.equals("") )

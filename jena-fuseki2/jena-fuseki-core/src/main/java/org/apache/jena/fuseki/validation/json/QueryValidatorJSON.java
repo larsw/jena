@@ -32,6 +32,7 @@ import org.apache.jena.atlas.io.IndentedLineBuffer;
 import org.apache.jena.atlas.json.JsonBuilder;
 import org.apache.jena.atlas.json.JsonObject;
 import org.apache.jena.fuseki.servlets.ServletOps;
+import org.apache.jena.fuseki.validation.ValidationRequestSize;
 import org.apache.jena.query.Query;
 import org.apache.jena.query.QueryFactory;
 import org.apache.jena.query.QueryParseException;
@@ -60,6 +61,7 @@ public class QueryValidatorJSON {
         obj.startObject();
 
         final String queryString = getArg(action, paramQuery);
+        ValidationRequestSize.rejectIfStringExceeds(queryString, "Validator query parameter");
 
         String querySyntax = getArgOrNull(action, paramSyntax);
         if ( querySyntax == null || querySyntax.equals("") )

@@ -32,6 +32,7 @@ import org.apache.jena.atlas.io.IndentedLineBuffer;
 import org.apache.jena.atlas.json.JsonBuilder;
 import org.apache.jena.atlas.json.JsonObject;
 import org.apache.jena.fuseki.servlets.ServletOps;
+import org.apache.jena.fuseki.validation.ValidationRequestSize;
 import org.apache.jena.query.QueryParseException;
 import org.apache.jena.query.Syntax;
 import org.apache.jena.update.UpdateFactory;
@@ -52,6 +53,7 @@ public class UpdateValidatorJSON {
         obj.startObject();
 
         final String updateString = getArg(action, paramUpdate);
+        ValidationRequestSize.rejectIfStringExceeds(updateString, "Validator update parameter");
         String updateSyntax = getArgOrNull(action, paramSyntax);
         if ( updateSyntax == null || updateSyntax.equals("") )
             updateSyntax = "SPARQL";
@@ -92,4 +94,3 @@ public class UpdateValidatorJSON {
         obj.key(jFormatted).value(out.asString());
     }
 }
-

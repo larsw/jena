@@ -32,6 +32,7 @@ import jakarta.servlet.ServletOutputStream;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 
+import org.apache.jena.fuseki.validation.ValidationRequestSize;
 import org.apache.jena.query.Syntax;
 import org.apache.jena.sparql.ARQException;
 import org.apache.jena.update.UpdateFactory;
@@ -63,6 +64,8 @@ public class UpdateValidatorHTML
             }
 
             final String updateString = httpRequest.getParameter(paramUpdate).replaceAll("(\r|\n| )*$", "");
+            if ( ValidationRequestSize.rejectIfStringExceeds(updateString, "Validator update parameter", httpResponse) )
+                return;
 
             String updateSyntax = httpRequest.getParameter(paramSyntax);
             if ( updateSyntax == null || updateSyntax.equals("") )

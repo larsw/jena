@@ -60,6 +60,9 @@ public abstract class ValidatorBaseJson extends ServletBase {
     }
 
     protected void execute(HttpServletRequest request, HttpServletResponse response) {
+        if ( ValidationRequestSize.rejectIfContentLengthExceeds(request, response) )
+            return;
+
         long id = allocRequestId(request, response);
         ValidationAction action = new ValidationAction(id, vLog, request, response, false);
         printRequest(action);
