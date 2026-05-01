@@ -58,6 +58,7 @@ import org.apache.jena.sparql.exec.http.*;
 import org.apache.jena.sparql.resultset.ResultsCompare;
 import org.apache.jena.sparql.sse.SSE;
 import org.apache.jena.sparql.util.Convert;
+import org.apache.jena.web.HttpSC;
 
 public class TestQuery extends AbstractFusekiTest {
 
@@ -101,6 +102,16 @@ public class TestQuery extends AbstractFusekiTest {
         } finally {
             Fuseki.getContext().set(Service.httpServiceAllowed, serverSetting);
         }
+    }
+
+    @Test
+    public void query_service_disabled_by_default() {
+        String query = "SELECT * WHERE { SERVICE <http://127.0.0.1:9/sparql> { ?s ?p ?o } }";
+        FusekiTestLib.expectQueryFail(() -> {
+            try ( QueryExecution qExec = QueryExecution.service(serviceQuery(), query) ) {
+                qExec.execSelect();
+            }
+        }, HttpSC.Code.UNPROCESSABLE_ENTITY);
     }
 
     @Test

@@ -53,6 +53,8 @@ import org.apache.jena.sparql.exec.QueryExec;
 import org.apache.jena.sparql.exec.QueryExecDatasetBuilder;
 import org.apache.jena.sparql.exec.QueryExecResult;
 import org.apache.jena.sparql.exec.RowSet;
+import org.apache.jena.sparql.exec.http.Service;
+import org.apache.jena.sparql.util.Context;
 import org.apache.jena.web.HttpSC;
 
 /**
@@ -331,11 +333,18 @@ public abstract class SPARQLQueryProcessor extends ActionService
         QueryExecDatasetBuilder builder = QueryExec.newBuilder()
                 .dataset(dataset)
                 .query(query)
-                .context(action.getContext())
+                .context(queryContext(action))
                 ;
         setTimeouts(builder, action);
         QueryExec qExec = builder.build();
         return qExec;
+    }
+
+    private static Context queryContext(HttpAction action) {
+        Context context = action.getContext().copy();
+        if ( ! context.isDefined(Service.httpServiceAllowed) && ! context.isDefined(Service.oldServiceAllowed) )
+            context.set(Service.httpServiceAllowed, false);
+        return context;
     }
 
     /**
